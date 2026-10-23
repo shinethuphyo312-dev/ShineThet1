@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shine Chat - Text, Audio & Video Call</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Padauk', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- LOGIN OVERLAY -->
+    <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl text-center space-y-6">
+            <div class="w-20 h-20 bg-indigo-600/20 text-indigo-400 rounded-full flex items-center justify-center mx-auto text-3xl ring-4 ring-indigo-500/30">
+                <i class="fa-solid font-bold fa-comments"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-white mb-1">Shine Chat မှ ကြိုဆိုပါတယ်</h1>
+                <p class="text-slate-400 text-sm">စာပို့ခြင်း၊ အသံနှင့် ဗီဒီယို ဖုန်းခေါ်ဆိုမှုများ ပြုလုပ်နိုင်ပါသည်</p>
+            </div>
+            
+            <form id="loginForm" class="space-y-4">
+                <div class="text-left">
+                    <label class="text-xs text-slate-400 font-semibold mb-1 block">သင့်နာမည် (Nickname)</label>
+                    <input type="text" id="nicknameInput" required placeholder="ဥပမာ - မောင်မောင်" 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition">
+                </div>
+                <button type="submit" id="joinBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2">
+                    <span>စတင်အသုံးပြုမည်</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN CHAT APP WRAPPER -->
+    <div id="appContainer" class="hidden flex-1 flex flex-col max-w-5xl w-full mx-auto p-2 sm:p-4 h-screen">
+        
+        <!-- HEADER -->
+        <header class="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-4 mb-3 flex items-center justify-between shadow-lg backdrop-blur">
+            <div class="flex items-center space-x-3">
+                <div class="relative">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-inner" id="userAvatar">
+                        ?
+                    </div>
+                    <span class="w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-800 rounded-full absolute bottom-0 right-0"></span>
+                </div>
+                <div>
+                    <h2 class="font-bold text-white text-base leading-tight" id="displayNickname">...</h2>
+                    <span class="text-xs text-slate-400 flex items-center gap-1">
+                        <span class="w-2 h-2 bg-emerald-400 rounded-full inline-block animate-pulse"></span> Online အသင့်ရှိသည်
+                    </span>
+                </div>
+            </div>
+
+            <!-- CALL TRIGGER BUTTONS -->
+            <div class="flex items-center gap-2">
+                <button id="startAudioCallBtn" class="p-3 bg-slate-700 hover:bg-indigo-600 hover:text-white text-indigo-400 rounded-xl transition flex items-center gap-2 text-sm font-semibold" title="အသံသီးသန့် ဖုန်းခေါ်မည်">
+                    <i class="fa-solid fa-phone"></i>
+                    <span class="hidden sm:inline">Voice Call</span>
+                </button>
+                <button id="startVideoCallBtn" class="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 text-sm font-semibold" title="ဗီဒီယို ဖုန်းခေါ်မည်">
+                    <i class="fa-solid fa-video"></i>
+                    <span class="hidden sm:inline">Video Call</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- CHAT AREA -->
+        <main class="flex-1 bg-slate-800/60 border border-slate-700/60 rounded-2xl flex flex-col overflow-hidden shadow-xl mb-3">
+            <!-- MESSAGES LIST -->
+            <div id="messagesList" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <div class="text-center my-4">
+                    <span class="text-xs bg-slate-700/60 text-slate-400 px-3 py-1 rounded-full border border-slate-600/40">
+                        အများသုံး Chat Room သို့ ရောက်ရှိနေပါသည်
+                    </span>
+                </div>
+            </div>
+
+            <!-- INPUT BAR -->
+            <form id="messageForm" class="p-3 bg-slate-800 border-t border-slate-700/80 flex items-center gap-2">
+                <input type="text" id="messageInput" placeholder="စာရိုက်ပါ..." required
+                       class="flex-1 bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded-xl transition w-12 h-12 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </main>
+    </div>
+
+    <!-- CALL MODAL / OVERLAY (For Active/Incoming/Outgoing calls) -->
+    <div id="callOverlay" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg flex-col justify-between p-4 hidden">
+        
+        <!-- CALL HEADER STATUS -->
+        <div class="flex items-center justify-between text-slate-300 z-10 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white">
+                    <i id="callHeaderIcon" class="fa-solid fa-video"></i>
+                </div>
+                <div>
+                    <p id="peerNicknameDisplay" class="font-bold text-white">သူငယ်ချင်း</p>
+                    <p id="callStateStatus" class="text-xs text-indigo-400 animate-pulse">ခေါ်ဆိုနေသည်...</p>
+                </div>
+            </div>
+            <div id="callTimer" class="text-sm font-mono text-slate-400 hidden">00:00</div>
+        </div>
+
+        <!-- VIDEO STREAM GRID -->
+        <div class="relative flex-1 my-4 rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center">
+            <!-- REMOTE VIDEO (Full) -->
+            <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+            
+            <!-- REMOTE PLACEHOLDER (When Video Disabled/Voice call) -->
+            <div id="remotePlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-400">
+                <div class="w-24 h-24 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center text-4xl mb-3 shadow-inner">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <p id="remotePlaceholderName" class="text-base font-semibold text-slate-200">အခြားသူ</p>
+            </div>
+
+            <!-- LOCAL VIDEO (PIP) -->
+            <div class="absolute bottom-4 right-4 w-32 h-44 sm:w-40 sm:h-56 bg-slate-950 rounded-xl border-2 border-indigo-500/50 shadow-2xl overflow-hidden">
+                <video id="localVideo" autoplay playsinline muted class="w-full h-full object-cover mirror"></video>
+                <div id="localPlaceholder" class="w-full h-full bg-slate-800 flex items-center justify-center text-slate-400 text-xl hidden">
+                    <i class="fa-solid fa-user-slash"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- CALL CONTROLS -->
+        <div class="flex items-center justify-center gap-4 z-10 py-2">
+            <!-- MUTE AUDIO -->
+            <button id="toggleAudioBtn" class="w-14 h-14 bg-slate-800 hover:bg-slate-700 text-white rounded-full flex items-center justify-center text-xl transition border border-slate-700">
+                <i class="fa-solid fa-microphone"></i>
+            </button>
+
+            <!-- TOGGLE CAMERA -->
+            <button id="toggleVideoBtn" class="w-14 h-14 bg-slate-800 hover:bg-slate-700 text-white rounded-full flex items-center justify-center text-xl transition border border-slate-700">
+                <i class="fa-solid fa-video"></i>
+            </button>
+
+            <!-- END CALL -->
+            <button id="endCallBtn" class="w-16 h-16 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-2xl transition shadow-lg shadow-red-600/40">
+                <i class="fa-solid fa-phone-slash"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- INCOMING CALL RINGING DIALOG -->
+    <div id="incomingCallModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden p-4">
+        <div class="bg-slate-800 border border-indigo-500/40 rounded-3xl p-6 text-center max-w-sm w-full shadow-2xl space-y-6 animate-bounce-short">
+            <div class="w-20 h-20 rounded-full bg-indigo-600/20 border-2 border-indigo-500 flex items-center justify-center mx-auto text-3xl text-indigo-400 animate-pulse">
+                <i class="fa-solid fa-phone-volume"></i>
+            </div>
+            <div>
+                <h3 id="callerNameText" class="text-xl font-bold text-white mb-1">...</h3>
+                <p id="incomingCallTypeText" class="text-sm text-indigo-400 font-medium">ဖုန်းခေါ်ဆိုနေပါသည်...</p>
+            </div>
+            <div class="flex items-center justify-center gap-6 pt-2">
+                <button id="rejectCallBtn" class="w-14 h-14 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-xl shadow-lg shadow-red-600/30 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <button id="acceptCallBtn" class="w-16 h-16 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full flex items-center justify-center text-2xl shadow-lg shadow-emerald-600/40 transition animate-pulse">
+                    <i class="fa-solid fa-phone"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE MODULE & WEBRTC SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, collection, doc, addDoc, setDoc, getDoc, updateDoc, deleteDoc, 
+            onSnapshot, query, serverTimestamp, getDocs 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase Configuration
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'shine-chat-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                // Default fallback placeholder config if env is absent
+                apiKey: "AIzaSyDemoKeyOnlyForDevelopment000",
+                authDomain: "demo-app.firebaseapp.com",
+                projectId: "demo-app",
+                storageBucket: "demo-app.appspot.com",
+                messagingSenderId: "1000000000",
+                appId: "1:1000000000:web:demo"
+            };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // WebRTC STUN Servers configuration
+        const rtcConfiguration = {
+            iceServers: [
+                { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+            ]
+        };
+
+        // Global State Variables
+        let currentUser = null;
+        let currentNickname = '';
+        let peerConnection = null;
+        let localStream = null;
+        let remoteStream = null;
+        let currentCallDocRef = null;
+        let callUnsubscribes = [];
+        let callTimerInterval = null;
+        let callStartTime = null;
+
+        let isAudioMuted = false;
+        let isVideoOff = false;
+        let isCallActive = false;
+
+        // UI DOM Elements
+        const loginModal = document.getElementById('loginModal');
+        const loginForm = document.getElementById('loginForm');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const appContainer = document.getElementById('appContainer');
+        const displayNickname = document.getElementById('displayNickname');
+        const userAvatar = document.getElementById('userAvatar');
+
+        const messageForm = document.getElementById('messageForm');
+        const messageInput = document.getElementById('messageInput');
+        const messagesList = document.getElementById('messagesList');
+
+        const startAudioCallBtn = document.getElementById('startAudioCallBtn');
+        const startVideoCallBtn = document.getElementById('startVideoCallBtn');
+
+        const callOverlay = document.getElementById('callOverlay');
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const localPlaceholder = document.getElementById('localPlaceholder');
+        const remotePlaceholder = document.getElementById('remotePlaceholder');
+        const remotePlaceholderName = document.getElementById('remotePlaceholderName');
+        const peerNicknameDisplay = document.getElementById('peerNicknameDisplay');
+        const callStateStatus = document.getElementById('callStateStatus');
+        const callHeaderIcon = document.getElementById('callHeaderIcon');
+        const callTimer = document.getElementById('callTimer');
+
+        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
+        const endCallBtn = document.getElementById('endCallBtn');
+
+        const incomingCallModal = document.getElementById('incomingCallModal');
+        const callerNameText = document.getElementById('callerNameText');
+        const incomingCallTypeText = document.getElementById('incomingCallTypeText');
+        const acceptCallBtn = document.getElementById('acceptCallBtn');
+        const rejectCallBtn = document.getElementById('rejectCallBtn');
+
+        let incomingCallData = null;
+
+        // 1. INITIALIZATION & AUTHENTICATION
+        window.addEventListener('load', async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.warn("Auth initialization fallback:", err);
+                await signInAnonymously(auth);
+            }
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                listenToCalls();
+            }
+        });
+
+        // Login Handler
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = nicknameInput.value.trim();
+            if (!name || !currentUser) return;
+
+            currentNickname = name;
+            displayNickname.textContent = name;
+            userAvatar.textContent = name.charAt(0).toUpperCase();
+
+            loginModal.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+
+            // Start listening to public messages
+            listenToMessages();
+        });
+
+        // Helper function to get valid Firestore collections within the permitted paths
+        function getArtifactCollection(collectionName) {
+            return collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+        }
+
+        // 2. REAL-TIME CHAT MESSAGING
+        const messagesPath = getArtifactCollection('messages');
+
+        function listenToMessages() {
+            onSnapshot(messagesPath, (snapshot) => {
+                const docs = [];
+                snapshot.forEach(docSnap => docs.push({ id: docSnap.id, ...docSnap.data() }));
+                
+                // Sort in memory
+                docs.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+                messagesList.innerHTML = `
+                    <div class="text-center my-4">
+                        <span class="text-xs bg-slate-700/60 text-slate-400 px-3 py-1 rounded-full border border-slate-600/40">
+                            အများသုံး Chat Room သို့ ရောက်ရှိနေပါသည်
+                        </span>
+                    </div>
+                `;
+
+                docs.forEach(msg => {
+                    const isMe = msg.senderId === currentUser.uid;
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} my-2`;
+
+                    const bubble = document.createElement('div');
+                    bubble.className = `max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-md ${
+                        isMe 
+                            ? 'bg-indigo-600 text-white rounded-br-none' 
+                            : 'bg-slate-700 text-slate-100 rounded-bl-none border border-slate-600'
+                    }`;
+
+                    if (!isMe) {
+                        const senderName = document.createElement('div');
+                        senderName.className = "text-[11px] font-bold text-indigo-400 mb-0.5";
+                        senderName.textContent = msg.senderName || 'Anonymous';
+                        bubble.appendChild(senderName);
+                    }
+
+                    const textP = document.createElement('div');
+                    textP.textContent = msg.text;
+                    bubble.appendChild(textP);
+
+                    msgDiv.appendChild(bubble);
+                    messagesList.appendChild(msgDiv);
+                });
+
+                messagesList.scrollTop = messagesList.scrollHeight;
+            }, (err) => {
+                console.error("Messages fetch error:", err);
+            });
+        }
+
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = messageInput.value.trim();
+            if (!text || !currentUser) return;
+
+            messageInput.value = '';
+            try {
+                await addDoc(messagesPath, {
+                    text: text,
+                    senderId: currentUser.uid,
+                    senderName: currentNickname,
+                    createdAt: Date.now()
+                });
+            } catch (err) {
+                console.error("Error sending message:", err);
+            }
+        });
+
+        // 3. WEBRTC & REAL-TIME CALL SYSTEM
+        const callsCollection = getArtifactCollection('calls');
+
+        // Trigger Call (Voice / Video)
+        startAudioCallBtn.addEventListener('click', () => initiateCall('audio'));
+        startVideoCallBtn.addEventListener('click', () => initiateCall('video'));
+
+        async function initiateCall(callType) {
+            if (!currentUser || isCallActive) return;
+
+            setupCallUI(callType, currentNickname, 'ခေါ်ဆိုနေသည်...');
+            showCallOverlay();
+
+            try {
+                // Initialize Media
+                const constraints = {
+                    audio: true,
+                    video: callType === 'video'
+                };
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                localVideo.srcObject = localStream;
+
+                if (callType === 'audio') {
+                    isVideoOff = true;
+                    toggleVideoBtn.disabled = true;
+                    toggleVideoBtn.classList.add('opacity-40');
+                } else {
+                    isVideoOff = false;
+                    toggleVideoBtn.disabled = false;
+                    toggleVideoBtn.classList.remove('opacity-40');
+                }
+
+                // Create Peer Connection
+                peerConnection = new RTCPeerConnection(rtcConfiguration);
+                remoteStream = new MediaStream();
+                remoteVideo.srcObject = remoteStream;
+
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                peerConnection.ontrack = (event) => {
+                    event.streams[0].getTracks().forEach(track => {
+                        remoteStream.addTrack(track);
+                    });
+                    remotePlaceholder.classList.add('hidden');
+                };
+
+                // Create Call Document in Firestore
+                const callDoc = doc(callsCollection);
+                currentCallDocRef = callDoc;
+
+                const offerCandidates = collection(callDoc, 'offerCandidates');
+                const answerCandidates = collection(callDoc, 'answerCandidates');
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        addDoc(offerCandidates, event.candidate.toJSON());
+                    }
+                };
+
+                // Create Offer
+                const offerDescription = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offerDescription);
+
+                const callData = {
+                    callerId: currentUser.uid,
+                    callerName: currentNickname,
+                    type: callType,
+                    status: 'ringing',
+                    createdAt: Date.now(),
+                    offer: {
+                        type: offerDescription.type,
+                        sdp: offerDescription.sdp
+                    }
+                };
+
+                await setDoc(callDoc, callData);
+
+                // Listen for Call Response (Answer)
+                const unsubCallDoc = onSnapshot(callDoc, (snapshot) => {
+                    const data = snapshot.data();
+                    if (!data) return;
+
+                    if (data.status === 'rejected' || data.status === 'ended') {
+                        cleanUpCall();
+                        return;
+                    }
+
+                    if (data.answer && !peerConnection.currentRemoteDescription) {
+                        const answerDescription = new RTCSessionDescription(data.answer);
+                        peerConnection.setRemoteDescription(answerDescription);
+                        callStateStatus.textContent = 'ချိတ်ဆက်ပြီးပါပြီ';
+                        startCallTimer();
+                    }
+                });
+                callUnsubscribes.push(unsubCallDoc);
+
+                // Listen for Answer ICE Candidates
+                const unsubAnswerCandidates = onSnapshot(answerCandidates, (snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            const candidate = new RTCIceCandidate(change.doc.data());
+                            peerConnection.addIceCandidate(candidate);
+                        }
+                    });
+                });
+                callUnsubscribes.push(unsubAnswerCandidates);
+
+            } catch (err) {
+                console.error("Error initiating call:", err);
+                alert("ကင်မရာ သို့မဟုတ် မိုက်ခရိုဖုန်း အသုံးပြုခွင့် ရရှိရန် လိုအပ်ပါသည်");
+                cleanUpCall();
+            }
+        }
+
+        // Listen for Incoming Calls
+        function listenToCalls() {
+            onSnapshot(callsCollection, (snapshot) => {
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === 'added') {
+                        const data = change.doc.data();
+                        const callId = change.doc.id;
+
+                        // Filter out if user is the caller or call is not ringing
+                        if (data.callerId !== currentUser.uid && data.status === 'ringing') {
+                            incomingCallData = { id: callId, ...data };
+                            callerNameText.textContent = data.callerName || 'အမည်မသိ';
+                            incomingCallTypeText.textContent = data.type === 'video' ? 'ဗီဒီယို ဖုန်းခေါ်ဆိုနေပါသည်...' : 'အသံသီးသန့် ဖုန်းခေါ်ဆိုနေပါသည်...';
+                            incomingCallModal.classList.remove('hidden');
+                        }
+                    }
+                });
+            });
+        }
+
+        // Reject Call
+        rejectCallBtn.addEventListener('click', async () => {
+            if (incomingCallData) {
+                const callDoc = doc(callsCollection, incomingCallData.id);
+                await updateDoc(callDoc, { status: 'rejected' });
+                incomingCallData = null;
+            }
+            incomingCallModal.classList.add('hidden');
+        });
+
+        // Accept Call
+        acceptCallBtn.addEventListener('click', async () => {
+            if (!incomingCallData) return;
+            
+            const callData = incomingCallData;
+            incomingCallModal.classList.add('hidden');
+            
+            const callType = callData.type;
+            setupCallUI(callType, callData.callerName, 'ချိတ်ဆက်နေသည်...');
+            showCallOverlay();
+
+            try {
+                const callDoc = doc(callsCollection, callData.id);
+                currentCallDocRef = callDoc;
+
+                // Media Constraints
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: callType === 'video'
+                });
+                localVideo.srcObject = localStream;
+
+                peerConnection = new RTCPeerConnection(rtcConfiguration);
+                remoteStream = new MediaStream();
+                remoteVideo.srcObject = remoteStream;
+
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                peerConnection.ontrack = (event) => {
+                    event.streams[0].getTracks().forEach(track => {
+                        remoteStream.addTrack(track);
+                    });
+                    remotePlaceholder.classList.add('hidden');
+                };
+
+                const offerCandidates = collection(callDoc, 'offerCandidates');
+                const answerCandidates = collection(callDoc, 'answerCandidates');
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        addDoc(answerCandidates, event.candidate.toJSON());
+                    }
+                };
+
+                // Set Remote Offer
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+
+                // Create Answer
+                const answerDescription = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answerDescription);
+
+                await updateDoc(callDoc, {
+                    answer: {
+                        type: answerDescription.type,
+                        sdp: answerDescription.sdp
+                    },
+                    status: 'connected'
+                });
+
+                callStateStatus.textContent = 'ချိတ်ဆက်ပြီးပါပြီ';
+                startCallTimer();
+
+                // Listen for Offer Candidates
+                const unsubOfferCandidates = onSnapshot(offerCandidates, (snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            const candidate = new RTCIceCandidate(change.doc.data());
+                            peerConnection.addIceCandidate(candidate);
+                        }
+                    });
+                });
+                callUnsubscribes.push(unsubOfferCandidates);
+
+                // Listen for call termination
+                const unsubCallDoc = onSnapshot(callDoc, (snapshot) => {
+                    const data = snapshot.data();
+                    if (!data || data.status === 'ended' || data.status === 'rejected') {
+                        cleanUpCall();
+                    }
+                });
+                callUnsubscribes.push(unsubCallDoc);
+
+            } catch (err) {
+                console.error("Error accepting call:", err);
+                alert("ဖုန်းခေါ်ဆိုမှုကို လက်ခံရန် အဆင်မပြေပါ");
+                cleanUpCall();
+            }
+        });
+
+        // End Call Button
+        endCallBtn.addEventListener('click', async () => {
+            if (currentCallDocRef) {
+                try {
+                    await updateDoc(currentCallDocRef, { status: 'ended' });
+                } catch (e) {
+                    console.log("Call doc cleanup issue:", e);
+                }
+            }
+            cleanUpCall();
+        });
+
+        // Controls: Audio Mute
+        toggleAudioBtn.addEventListener('click', () => {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    isAudioMuted = !isAudioMuted;
+                    audioTrack.enabled = !isAudioMuted;
+                    toggleAudioBtn.innerHTML = isAudioMuted 
+                        ? '<i class="fa-solid fa-microphone-slash text-red-500"></i>' 
+                        : '<i class="fa-solid fa-microphone"></i>';
+                }
+            }
+        });
+
+        // Controls: Video Toggle
+        toggleVideoBtn.addEventListener('click', () => {
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    isVideoOff = !isVideoOff;
+                    videoTrack.enabled = !isVideoOff;
+                    localPlaceholder.classList.toggle('hidden', !isVideoOff);
+                    localVideo.classList.toggle('hidden', isVideoOff);
+                    toggleVideoBtn.innerHTML = isVideoOff 
+                        ? '<i class="fa-solid fa-video-slash text-red-500"></i>' 
+                        : '<i class="fa-solid fa-video"></i>';
+                }
+            }
+        });
+
+        // UI Helpers
+        function setupCallUI(type, name, status) {
+            isCallActive = true;
+            peerNicknameDisplay.textContent = name || 'သူငယ်ချင်း';
+            remotePlaceholderName.textContent = name || 'သူငယ်ချင်း';
+            callStateStatus.textContent = status;
+            callHeaderIcon.className = type === 'video' ? 'fa-solid fa-video' : 'fa-solid fa-phone';
+
+            if (type === 'audio') {
+                localVideo.classList.add('hidden');
+                localPlaceholder.classList.remove('hidden');
+            } else {
+                localVideo.classList.remove('hidden');
+                localPlaceholder.classList.add('hidden');
+            }
+
+            remotePlaceholder.classList.remove('hidden');
+        }
+
+        function showCallOverlay() {
+            callOverlay.classList.remove('hidden');
+            callOverlay.classList.add('flex');
+        }
+
+        function hideCallOverlay() {
+            callOverlay.classList.add('hidden');
+            callOverlay.classList.remove('flex');
+        }
+
+        function startCallTimer() {
+            callTimer.classList.remove('hidden');
+            callStartTime = Date.now();
+            callTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+                const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                const secs = String(elapsed % 60).padStart(2, '0');
+                callTimer.textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function cleanUpCall() {
+            isCallActive = false;
+            callUnsubscribes.forEach(unsub => unsub());
+            callUnsubscribes = [];
+
+            if (callTimerInterval) {
+                clearInterval(callTimerInterval);
+                callTimerInterval = null;
+            }
+            callTimer.classList.add('hidden');
+            callTimer.textContent = '00:00';
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            localVideo.srcObject = null;
+            remoteVideo.srcObject = null;
+
+            currentCallDocRef = null;
+            incomingCallData = null;
+
+            hideCallOverlay();
+        }
+    </script>
+</body>
+</html>
